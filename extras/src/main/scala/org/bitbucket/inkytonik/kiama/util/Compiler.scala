@@ -24,7 +24,7 @@ trait CompilerBase[N, T <: N, C <: Config] extends ServerWithConfig[N, T, C] {
     import org.bitbucket.inkytonik.kiama.output.PrettyPrinterTypes.{Document, emptyDocument}
     import org.bitbucket.inkytonik.kiama.output.PrettyPrinter.{any, pretty}
     import org.bitbucket.inkytonik.kiama.util.Messaging.Messages
-    import org.eclipse.lsp4j.DocumentSymbol
+    import org.eclipse.lsp4j.{DocumentSymbol, Command, Range => LSPRange, ExecuteCommandParams}
     import org.rogach.scallop.exceptions.ScallopException
     import scala.collection.mutable
 
@@ -219,6 +219,14 @@ trait CompilerBase[N, T <: N, C <: Config] extends ServerWithConfig[N, T, C] {
     }
 
     /**
+     * Arbitry command execution.
+     * This implements the LSP workspace/executeCommand request as defined in
+     * https://microsoft.github.io/language-server-protocol/specification#workspace_executeCommand
+     */
+    def executeCommand(executeCommandParams : ExecuteCommandParams) : Any =
+        None
+
+    /**
      * A representation of a simple named code action that replaces
      * a tree node with other text.
      */
@@ -231,6 +239,23 @@ trait CompilerBase[N, T <: N, C <: Config] extends ServerWithConfig[N, T, C] {
      * replaces it. Default is to return no actions.
      */
     def getCodeActions(position : Position) : Option[Vector[TreeAction]] =
+        None
+
+    /**
+     * A representation of a simple named code lens.
+     * From lsp4j / CodeLens.java: "A code lens represents a command
+     * that should be shown along with source text, like the number of
+     * references, a way to run tests, etc."
+     * This is a wrapper to lsp4j/CodeLens
+     */
+    case class TreeLens(name : String, command : Command, range : LSPRange)
+
+    /**
+     * Return showable code lenses for the given position (if any).
+     * Each lens is in terms of a lens description and a code action
+     * that is triggered by this lens. Default is to return no lenses.
+     */
+    def getCodeLenses(uri : String) : Option[Vector[TreeLens]] =
         None
 
     /**

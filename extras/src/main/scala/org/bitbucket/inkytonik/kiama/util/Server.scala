@@ -296,6 +296,8 @@ class Services[N, T <: N, C <: Config](
             serverCapabilities.setDefinitionProvider(true)
             serverCapabilities.setDocumentFormattingProvider(true)
             serverCapabilities.setDocumentSymbolProvider(true)
+            serverCapabilities.setCodeLensProvider(new CodeLensOptions(false))
+            serverCapabilities.setExecuteCommandProvider(new ExecuteCommandOptions())
             serverCapabilities.setHoverProvider(true)
             serverCapabilities.setReferencesProvider(true)
             serverCapabilities.setTextDocumentSync(TextDocumentSyncKind.Full)
@@ -358,6 +360,22 @@ class Services[N, T <: N, C <: Config](
         server.sources.get(document.getUri).map(source => {
             Position(position.getLine + 1, position.getCharacter + 1, source)
         })
+
+    @JsonNotification("textDocument/codeLens")
+    def codelens(params : CodeLensParams) : CompletableFuture[Array[CodeLens]] =
+        CompletableFutures.computeAsync(
+            (_ : CancelChecker) =>
+                (
+                    for (
+                        treeLenses <- server.getCodeLenses(params.getTextDocument().getUri());
+                        codeLenses = treeLenses.map {
+                            case server.TreeLens(name, command, range) =>
+                                val lens = new CodeLens(range, command, {});
+                                lens
+                        }
+                    ) yield codeLenses.toArray
+                ).getOrElse(null)
+        )
 
     @JsonNotification("textDocument/codeAction")
     def codeactions(params : CodeActionParams) : CompletableFuture[Array[CodeAction]] =
@@ -460,6 +478,9 @@ class Services[N, T <: N, C <: Config](
     def didChangeConfiguration(params : DidChangeConfigurationParams) : Unit = {
         server.setSettings(params.getSettings)
     }
+
+    @JsonNotification("workspace/executeCommand")
+    def commands(executeCommandParams : ExecuteCommandParams) : Any = server.executeCommand(executeCommandParams)
 
     // Missing services not supported by LSP4J but sent by client side
 
